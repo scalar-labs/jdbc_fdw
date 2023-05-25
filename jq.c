@@ -291,24 +291,24 @@ jdbc_detach_jvm()
 
 static void jdbc_get_jni_env(void)
 {
-    int			JVMEnvStat;
+	int			JVMEnvStat;
 
 	ereport(DEBUG3, (errmsg("In In jdbc_get_jni_env")));
 
-    JVMEnvStat = (*jvm)->GetEnv(jvm, (void **) &Jenv, JNI_VERSION);
-    if (JVMEnvStat == JNI_EDETACHED)
-    {
-        ereport(DEBUG3, (errmsg("JVMEnvStat: JNI_EDETACHED; the current thread is not attached to the VM")));
-        jdbc_attach_jvm();
-    }
-    else if (JVMEnvStat == JNI_OK)
-    {
-        ereport(DEBUG3, (errmsg("JVMEnvStat: JNI_OK")));
-    }
-    else if (JVMEnvStat == JNI_EVERSION)
-    {
-        ereport(ERROR, (errmsg("JVMEnvStat: JNI_EVERSION; the specified version is not supported")));
-    }
+	JVMEnvStat = (*jvm)->GetEnv(jvm, (void **) &Jenv, JNI_VERSION);
+	if (JVMEnvStat == JNI_EDETACHED)
+	{
+		ereport(DEBUG3, (errmsg("JVMEnvStat: JNI_EDETACHED; the current thread is not attached to the VM")));
+		jdbc_attach_jvm();
+	}
+	else if (JVMEnvStat == JNI_OK)
+	{
+		ereport(DEBUG3, (errmsg("JVMEnvStat: JNI_OK")));
+	}
+	else if (JVMEnvStat == JNI_EVERSION)
+	{
+		ereport(ERROR, (errmsg("JVMEnvStat: JNI_EVERSION; the specified version is not supported")));
+	}
 }
 
 static void jdbc_add_classpath_to_system_class_loader(char *classpath)
@@ -331,51 +331,51 @@ static void jdbc_add_classpath_to_system_class_loader(char *classpath)
 	snprintf(url_classpath, url_classpath_len, "file:%s/", classpath);
 
 
-    ClassLoader_class = (*Jenv)->FindClass(Jenv, "java/lang/ClassLoader");
-    if (ClassLoader_class == NULL) {
-        ereport(ERROR, errmsg("java/lang/ClassLoader is not found"));
-    }
+	ClassLoader_class = (*Jenv)->FindClass(Jenv, "java/lang/ClassLoader");
+	if (ClassLoader_class == NULL) {
+		ereport(ERROR, errmsg("java/lang/ClassLoader is not found"));
+	}
 
 	ClassLoader_getSystemClassLoader = (*Jenv)->GetStaticMethodID(Jenv, ClassLoader_class,
-                                         "getSystemClassLoader", "()Ljava/lang/ClassLoader;");
+															   "getSystemClassLoader", "()Ljava/lang/ClassLoader;");
 	if (ClassLoader_getSystemClassLoader == NULL) {
 		ereport(ERROR, errmsg("ClassLoader.getSystemClassLoader is not found"));
 	}
 
-    URLClassLoader_class = (*Jenv)->FindClass(Jenv, "java/net/URLClassLoader");
-    if (URLClassLoader_class == NULL) {
-        ereport(ERROR, errmsg("java/net/URLClassLoader is not found"));
-    }
+	URLClassLoader_class = (*Jenv)->FindClass(Jenv, "java/net/URLClassLoader");
+	if (URLClassLoader_class == NULL) {
+		ereport(ERROR, errmsg("java/net/URLClassLoader is not found"));
+	}
 
 	URLClassLoader_addURL = (*Jenv)->GetMethodID(Jenv, URLClassLoader_class,
-                                              "addURL", "(Ljava/net/URL;)V");
+											  "addURL", "(Ljava/net/URL;)V");
 	if (URLClassLoader_addURL == NULL) {
 		ereport(ERROR, errmsg("URLClassLoader.addURL is not found"));
 	}
 
-    URL_class = (*Jenv)->FindClass(Jenv, "java/net/URL");
-    if (URL_class == NULL) {
-        ereport(ERROR, errmsg("java/net/URL is not found"));
-    }
+	URL_class = (*Jenv)->FindClass(Jenv, "java/net/URL");
+	if (URL_class == NULL) {
+		ereport(ERROR, errmsg("java/net/URL is not found"));
+	}
 
 	URL_constructor = (*Jenv)->GetMethodID(Jenv, URL_class,
-                                              "<init>", "(Ljava/lang/String;)V");
+										"<init>", "(Ljava/lang/String;)V");
 	if (URL_constructor == NULL) {
 		ereport(ERROR, errmsg("URL.<init> is not found"));
 	}
 
-    jq_exception_clear();
+	jq_exception_clear();
 	system_class_loader = (*Jenv)->CallStaticObjectMethod(
 		Jenv, ClassLoader_class, ClassLoader_getSystemClassLoader);
-    jq_get_exception();
+	jq_get_exception();
 
-    jq_exception_clear();
+	jq_exception_clear();
 	url = (*Jenv)->NewObject(Jenv, URL_class, URL_constructor, (*Jenv)->NewStringUTF(Jenv, url_classpath));
-    jq_get_exception();
+	jq_get_exception();
 
-    jq_exception_clear();
+	jq_exception_clear();
 	(*Jenv)->CallVoidMethod(Jenv, system_class_loader, URLClassLoader_addURL, url);
-    jq_get_exception();
+	jq_get_exception();
 	ereport(DEBUG3, errmsg("Add classpath to System Class Loader: %s", url_classpath));
 }
 
@@ -428,25 +428,25 @@ jdbc_jvm_init(const ForeignServer * server, const UserMapping * user)
 
 		/* Create the Java VM */
 		res = JNI_CreateJavaVM(&jvm, (void **) &Jenv, &vm_args);
-        if (res == JNI_EEXIST) {
-            ereport(DEBUG3, errmsg("Java VM has already been created. "
-                        "Re-use the existing Java VM."));
-            res = JNI_GetCreatedJavaVMs(&jvm, 1, NULL);
-            if (res < 0) {
-                ereport(ERROR, errmsg("Failed to get created Java VM"));
-            }
-            jdbc_get_jni_env();
-            jdbc_add_classpath_to_system_class_loader(strpkglibdir);
-        }
-        else if (res < 0)
+		if (res == JNI_EEXIST) {
+			ereport(DEBUG3, errmsg("Java VM has already been created. "
+						"Re-use the existing Java VM."));
+			res = JNI_GetCreatedJavaVMs(&jvm, 1, NULL);
+			if (res < 0) {
+				ereport(ERROR, errmsg("Failed to get created Java VM"));
+			}
+			jdbc_get_jni_env();
+			jdbc_add_classpath_to_system_class_loader(strpkglibdir);
+		}
+		else if (res < 0)
 		{
 			ereport(ERROR,
 					(errmsg("Failed to create Java VM")
 					 ));
 		} else {
-            ereport(DEBUG3, (errmsg("Successfully created a JVM with %d MB heapsize", opts.maxheapsize)));
-            jdbc_add_classpath_to_system_class_loader(strpkglibdir);
-        }
+			ereport(DEBUG3, (errmsg("Successfully created a JVM with %d MB heapsize", opts.maxheapsize)));
+			jdbc_add_classpath_to_system_class_loader(strpkglibdir);
+		}
 		InterruptFlag = false;
 		/* Register an on_proc_exit handler that shuts down the JVM. */
 		on_proc_exit(jdbc_destroy_jvm, 0);
@@ -454,7 +454,7 @@ jdbc_jvm_init(const ForeignServer * server, const UserMapping * user)
 	}
 	else
 	{
-        jdbc_get_jni_env();
+		jdbc_get_jni_env();
 	}
 }
 
