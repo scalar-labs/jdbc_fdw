@@ -118,6 +118,10 @@ static void jdbc_get_jni_env(void);
 static void jdbc_add_classpath_to_system_class_loader(char *classpath);
 
 /*
+ * Get the maximum heap size for JVM by calling Runtime.getRuntime().maxMemory()
+ */
+static long jdbc_get_max_heap_size();
+/*
  * SIGINT interrupt check and process function
  */
 static void jdbc_sig_int_interrupt_check_process();
@@ -376,7 +380,46 @@ static void jdbc_add_classpath_to_system_class_loader(char *classpath)
 	jq_exception_clear();
 	(*Jenv)->CallVoidMethod(Jenv, system_class_loader, URLClassLoader_addURL, url);
 	jq_get_exception();
+
 	ereport(DEBUG3, errmsg("Add classpath to System Class Loader: %s", url_classpath));
+}
+
+static long jdbc_get_max_heap_size()
+{
+	jclass Runtime_class;
+	jmethodID Runtime_getRuntime;
+	jobject runtime;
+	jmethodID Runtime_maxMemory;
+	jlong max_memory;
+
+	ereport(DEBUG3, errmsg("entering function %s", __func__));
+
+	Runtime_class = (*Jenv)->FindClass(Jenv, "java/lang/Runtime");
+	if (Runtime_class == NULL) {
+		ereport(ERROR, errmsg("java/lang/Runtime is not found"));
+	}
+
+	Runtime_getRuntime = (*Jenv)->GetStaticMethodID(Jenv, Runtime_class, 
+												 "getRuntime", "()Ljava/lang/Runtime;");
+	if (Runtime_getRuntime  == NULL) {
+		ereport(ERROR, errmsg("Runtime.getRuntime is not found"));
+	}
+
+	Runtime_maxMemory = (*Jenv)->GetMethodID(Jenv, Runtime_class, "maxMemory", "()J");
+	if (Runtime_maxMemory  == NULL) {
+		ereport(ERROR, errmsg("Runtime.maxMemory is not found"));
+	}
+
+	jq_exception_clear();
+	runtime = (*Jenv)->CallStaticObjectMethod(Jenv, Runtime_class,
+						 Runtime_getRuntime);
+	jq_get_exception();
+
+	jq_exception_clear();
+	max_memory = (*Jenv)->CallLongMethod(Jenv, runtime, Runtime_maxMemory);
+	jq_get_exception();
+
+	return max_memory;
 }
 
 /*
@@ -429,20 +472,20 @@ jdbc_jvm_init(const ForeignServer * server, const UserMapping * user)
 		/* Create the Java VM */
 		res = JNI_CreateJavaVM(&jvm, (void **) &Jenv, &vm_args);
 		if (res == JNI_EEXIST) {
-			ereport(DEBUG3, errmsg("Java VM has already been created. "
-						"Re-use the existing Java VM."));
 			res = JNI_GetCreatedJavaVMs(&jvm, 1, NULL);
 			if (res < 0) {
 				ereport(ERROR, errmsg("Failed to get created Java VM"));
 			}
 			jdbc_get_jni_env();
 			jdbc_add_classpath_to_system_class_loader(strpkglibdir);
+			ereport(WARNING, errmsg("Java VM has already been created by another extension. "
+						"The existing Java VM will be re-used. "
+						"The max heapsize may be different from the setting value. "
+						"The current max heapsize is %ld bytes", jdbc_get_max_heap_size()));
 		}
 		else if (res < 0)
 		{
-			ereport(ERROR,
-					(errmsg("Failed to create Java VM")
-					 ));
+			ereport(ERROR, (errmsg("Failed to create Java VM")));
 		} else {
 			ereport(DEBUG3, (errmsg("Successfully created a JVM with %d MB heapsize", opts.maxheapsize)));
 			jdbc_add_classpath_to_system_class_loader(strpkglibdir);
