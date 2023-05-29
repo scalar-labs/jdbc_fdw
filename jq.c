@@ -291,7 +291,7 @@ jdbc_detach_jvm()
 
 static void jdbc_get_jni_env(void)
 {
-	int			JVMEnvStat;
+	int JVMEnvStat;
 
 	ereport(DEBUG3, (errmsg("In In jdbc_get_jni_env")));
 
