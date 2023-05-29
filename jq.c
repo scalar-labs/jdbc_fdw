@@ -293,7 +293,7 @@ static void jdbc_get_jni_env(void)
 {
 	int JVMEnvStat;
 
-	ereport(DEBUG3, (errmsg("In In jdbc_get_jni_env")));
+	ereport(DEBUG3, (errmsg("In jdbc_get_jni_env")));
 
 	JVMEnvStat = (*jvm)->GetEnv(jvm, (void **) &Jenv, JNI_VERSION);
 	if (JVMEnvStat == JNI_EDETACHED)
