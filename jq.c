@@ -478,7 +478,7 @@ jdbc_jvm_init(const ForeignServer * server, const UserMapping * user)
 			}
 			jdbc_get_jni_env();
 			jdbc_add_classpath_to_system_class_loader(strpkglibdir);
-			ereport(WARNING, errmsg("Java VM has already been created by another extension. "
+			ereport(INFO, errmsg("Java VM has already been created by another extension. "
 						"The existing Java VM will be re-used. "
 						"The max heapsize may be different from the setting value. "
 						"The current max heapsize is %ld bytes", jdbc_get_max_heap_size()));
